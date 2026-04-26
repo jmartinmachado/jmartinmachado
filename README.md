@@ -18,4 +18,5 @@
 - Prompt engineering, diseño de agentes y workflows con LLMs
 
 ## 📄 Workflow
-- [Flujo de trabajo y publicacion de binarios](https://htmlpreview.github.io/?https://github.com/jmartinmachado/jmartinmachado/blob/main/git-workflow.html) — pipeline de 6 fases con 8 skills encadenados
+- [Flujo de trabajo y publicacion de binarios (es)](https://htmlpreview.github.io/?https://github.com/jmartinmachado/jmartinmachado/blob/main/doc/git-workflow.html) — pipeline de 6 fases con 8 skills encadenados
+- [Workflow and binary publishing (en)](https://htmlpreview.github.io/?https://github.com/jmartinmachado/jmartinmachado/blob/main/ai-knowledge/git-workflow.html) — 6-phase pipeline with 8 chained skills
