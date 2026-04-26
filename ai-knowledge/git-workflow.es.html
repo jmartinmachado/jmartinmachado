@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>FLUJO DE TRABAJO Y PUBLICACION DE BINARIOS</title>
+<style>
+  :root {
+    --bg:        #f5f1e8;
+    --paper:     #ffffff;
+    --ink:       #1a1a1a;
+    --dim:       #6b6b6b;
+    --line:      #c9c0a8;
+    --accent:    #0050a0;
+    --green:     #1a7f37;
+    --yellow:    #9a6700;
+    --red:       #b8201f;
+    --header:    #0d2c4f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 40px 20px;
+  }
+  .sheet {
+    max-width: 980px;
+    margin: 0 auto;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    padding: 48px 56px 40px;
+    box-shadow: 0 1px 0 rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.05);
+  }
+  .header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 28px; }
+  .system { color: var(--accent); font-weight: 700; letter-spacing: 1.5px; font-size: 12px; }
+  .doc-id { color: var(--dim); font-size: 11px; margin-top: 2px; }
+  h1 { font-family: inherit; font-size: 22px; margin: 18px 0 4px; letter-spacing: 1px; color: var(--header); }
+  .subtitle { color: var(--dim); font-size: 13px; }
+  .section { margin: 36px 0 8px; }
+  .section-label {
+    color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: 1.5px;
+    border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-bottom: 14px;
+  }
+  pre {
+    margin: 0; padding: 14px 18px; background: var(--paper);
+    border: 1px solid var(--line); overflow-x: auto;
+    font-family: inherit; font-size: 13px; line-height: 1.55;
+    white-space: pre; color: var(--ink);
+  }
+  pre.flow { background: #faf7ee; }
+  .red    { color: var(--red); }
+  .green  { color: var(--green); }
+  .yellow { color: var(--yellow); }
+  .accent { color: var(--accent); }
+  .dim    { color: var(--dim); }
+  .footer {
+    margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--line);
+    color: var(--dim); font-size: 11px; display: flex; justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="header">
+    <div class="system">PALANTIR-7000  ::  TECHNICAL DISPATCH</div>
+    <div class="doc-id">DOC-ID 26-APR-2026  &middot;  REV 05  &middot;  CLASS PUBLIC</div>
+    <h1>FLUJO DE TRABAJO Y PUBLICACION DE BINARIOS</h1>
+    <div class="subtitle">mejorada con Claude Code  &mdash;  pipeline de 6 fases con 8 skills encadenados</div>
+  </div>
+
+  <!-- GITFLOW -->
+  <div class="section">
+    <div class="section-label">SYS&gt;  GITFLOW &mdash; ESTRATEGIA DE BRANCHES</div>
+<pre>
+<span class="dim">  main    ───────────────────────────────────────────────────► produccion</span>
+                                                 ▲
+<span class="accent">  release/v1.16.0 ── RC → validacion ────────────┘   merge → main</span>
+<span class="dim">       ▲                                              backport → develop</span>
+       │
+<span class="dim">  develop ────────────────────────────────────────────────────► integracion</span>
+                  │
+<span class="green">                  └── feature/PROJ-123   ← creada con git-branch-new</span>
+
+<span class="red">  hotfix/fix-001  ← sale de main · merge a main · backport a develop</span>
+</pre>
+  </div>
+
+  <!-- ANATOMIA DE UN SKILL -->
+  <div class="section">
+    <div class="section-label">SYS&gt;  ANATOMIA DE UN SKILL</div>
+<pre>
+  <span class="dim">Cada skill vive en .claude/skills/&lt;nombre&gt;/ y tiene esta estructura:</span>
+
+  .claude/skills/git-branch-new/
+  ├── <span class="accent">SKILL.md</span>           ← instrucciones + frontmatter (obligatorio)
+  ├── references/        ← docs auxiliares (schemas, ejemplos)
+  │   └── examples.md
+  └── scripts/           ← helpers ejecutables (bash, python)
+      └── slugify.sh
+
+  <span class="dim">El SKILL.md tiene 3 secciones que forman el contrato:</span>
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ <span class="accent">1. FRONTMATTER  (YAML)            ← obligatorio                 </span> │
+  │    name + description                                            │
+  │    lo unico que Claude usa para decidir CUANDO                   │
+  │    invocar el skill (matchea description vs prompt)              │
+  │                                                                  │
+  │ <span class="accent">2. STEPS  (## Steps)              ← el COMO                     </span> │
+  │    procedimiento numerado paso a paso                            │
+  │    lo que Claude ejecuta una vez activado                        │
+  │    puede incluir bash, scripts/, lecturas de references/         │
+  │                                                                  │
+  │ <span class="accent">3. RULES  (## Rules)              ← guardrails                  </span> │
+  │    constraints duros: "nunca X", "siempre validar Y"             │
+  │    previenen que Claude se desvie o rompa cosas                  │
+  │    ej: "Never branch from main unless hotfix"                    │
+  └──────────────────────────────────────────────────────────────────┘
+
+  <span class="dim">Tecnicamente solo el frontmatter es obligatorio para que el skill</span>
+  <span class="dim">cargue. Sin Steps no hace nada util. Sin Rules Claude puede</span>
+  <span class="dim">improvisar de mas.</span>
+
+  <span class="dim">Ejemplo real &mdash; SKILL.md de git-branch-new:</span>
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ ---                                                              │
+  │ <span class="accent">name: git-branch-new                                            </span> │
+  │ <span class="accent">description: >                                                  </span> │
+  │   Use when the user wants to create a new git branch             │
+  │   Activate when the user says "crea una rama"                    │
+  │   or passes a ticket ID like "PROJ-014"                          │
+  │ ---                                                              │
+  │                                                                  │
+  │ <span class="green"># New Branch                                                    </span> │
+  │ Creates a branch from the correct base following                 │
+  │ the project naming conventions.                                  │
+  │                                                                  │
+  │ <span class="green">## Steps                                                        </span> │
+  │ 1. Timestamp                                                     │
+  │ 2. Extract ticket ID and description                             │
+  │ 3. Derive branch name                                            │
+  │ 4. Check for duplicate ticket branches                           │
+  │ 5. Detect base branch                                            │
+  │ 6. Handle dirty working tree (auto-stash)                        │
+  │ 7. Checkout base and pull                                        │
+  │ 8. Create the branch                                             │
+  │ 9. Confirm with structured output                                │
+  │                                                                  │
+  │ <span class="green">## Rules                                                        </span> │
+  │ - Never branch from main unless explicitly hotfix                │
+  │ - Never push the branch in this skill                            │
+  │ - Keep description slug short (3-5 words max)                    │
+  └──────────────────────────────────────────────────────────────────┘
+
+  <span class="dim">Flujo de invocacion:</span>
+
+  USER     ───►  "/git-branch-new PROJ-123"
+                  │
+                  ▼
+  CLAUDE   ───►  matchea contra description en frontmatter
+                  │
+                  ▼
+  RUNTIME  ───►  carga SKILL.md completo en contexto
+                  │
+                  ├── ejecuta los Steps en orden
+                  ├── corre scripts/ cuando son necesarios
+                  ├── consulta references/ para schemas o ejemplos
+                  └── reporta output estructurado al usuario
+                  │
+                  ▼
+  <span class="green">OK&gt;  [DD-MMM-YYYY HH:MM:SS]</span>
+       Branch:  PROJ-123-delete-item-endpoint
+       Base:    develop
+       Stash:   [none]
+</pre>
+  </div>
+
+  <!-- FASE 1 -->
+  <div class="section">
+    <div class="section-label">FASE 1  &mdash;  PLANIFICACION  &middot;  obtener tarea + crear rama</div>
+<pre>
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ <span class="accent">/git-branch-new PROJ-123                                        </span> │
+  │                                                                  │
+  │ 1. lee el detalle de la tarea en tickets/backlog.md              │
+  │    - ID:           PROJ-123                                      │
+  │    - titulo:       "DELETE /items/{id} con guard de uso"         │
+  │    - epic / descripcion / referencias cruzadas                   │
+  │                                                                  │
+  │ 2. infiere tipo de branch desde el ID + naming correcto:         │
+  │    PROJ-XXX        → PROJ-XXX-short-slug          (feature)      │
+  │    PROJ-FIX-XXX    → PROJ-FIX-XXX-short-slug      (bug fix)      │
+  │    PROJ-REL-XXX    → release/PROJ-REL-XXX         (release)      │
+  │    hotfix/...      → hotfix/PROJ-FIX-XXX-slug     (urgente)      │
+  │                                                                  │
+  │ 3. detecta el base branch correcto                               │
+  │    - feature              → develop                              │
+  │    - release              → develop                              │
+  │    - hotfix               → main                                 │
+  │    - fix en release activa → release/*                           │
+  │                                                                  │
+  │ 4. chequea duplicados de ticket                                  │
+  │    git fetch + grep ticket-id                                    │
+  │    - existe        → switch directo (no crea otra)               │
+  │    - no existe     → procede                                     │
+  │                                                                  │
+  │ 5. stash automatico si hay cambios sin commitear                 │
+  │    git stash push -m "auto-stash before branch"                  │
+  │                                                                  │
+  │ 6. checkout base + pull + crea rama                              │
+  │    git checkout develop && git pull                              │
+  │    git checkout -b PROJ-123-delete-item-endpoint                 │
+  │                                                                  │
+  │ <span class="green">→ rama lista, base actualizado, listo para codear               </span> │
+  └──────────────────────────────────────────────────────────────────┘
+</pre>
+  </div>
+
+  <!-- FASE 2 - DISEÑO -->
+  <div class="section">
+    <div class="section-label">FASE 2  &mdash;  DISE&Ntilde;O  &middot;  pensar la feature antes de codear</div>
+<pre>
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ <span class="accent">conversacion iterativa con Claude (no es un skill)              </span> │
+  │                                                                  │
+  │ <span class="dim">itero hasta que el diseño cierra:                               </span> │
+  │                                                                  │
+  │   YO     ─►  contexto: lee CLAUDE.md + handlers/ + schema/       │
+  │               ¿como encaja esta feature en el codebase?          │
+  │               │                                                  │
+  │               ▼                                                  │
+  │   CLAUDE ─►  propone un primer enfoque + tradeoffs               │
+  │ <span class="dim">              soft delete vs hard delete, status codes,         </span> │
+  │ <span class="dim">              edge cases que ve, archivos a tocar...            </span> │
+  │               │                                                  │
+  │               ▼                                                  │
+  │   YO     ─►  cuestiono / refino / agrego constraints             │
+  │ <span class="dim">              "y si dos requests concurrentes?"                 </span> │
+  │ <span class="dim">              "que pasa si la migracion falla a mitad?"         </span> │
+  │ <span class="dim">              "prefiero soft delete por auditoria"              </span> │
+  │               │                                                  │
+  │               ▼                                                  │
+  │   CLAUDE ─►  ajusta el diseño + identifica nuevos riesgos        │
+  │               │                                                  │
+  │               ▼                                                  │
+  │   ¿el diseño cierra?                                             │
+  │ <span class="red">    NO  → vuelvo a cuestionar / refinar (loop)                  </span> │
+  │ <span class="green">    SI  → tengo:                                                </span> │
+  │ <span class="green">            - contrato de API claro                             </span> │
+  │ <span class="green">            - ADRs documentados (decisiones + por que)          </span> │
+  │ <span class="green">            - lista de archivos a tocar                         </span> │
+  │ <span class="green">            - tests a escribir antes de codear                  </span> │
+  │ <span class="green">            - migracion de DB planeada                          </span> │
+  │                                                                  │
+  │ <span class="accent">→ recien ahora arranco a codear (FASE 3)                        </span> │
+  └──────────────────────────────────────────────────────────────────┘
+
+  <span class="dim">Sin esta iteracion: codeas → te chocas con edge cases en el review →</span>
+  <span class="dim">repetis el loop de la FASE 3 muchas mas veces. Es barato pensar.</span>
+</pre>
+  </div>
+
+  <!-- FASE 3 - IMPLEMENTACION -->
+  <div class="section">
+    <div class="section-label">FASE 3  &mdash;  IMPLEMENTACION  &middot;  Claude ejecuta el plan</div>
+<pre>
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ <span class="accent">Claude ejecuta el plan de la FASE 2                             </span> │
+  │                                                                  │
+  │ con el plan de diseño en mano, Claude:                           │
+  │                                                                  │
+  │ 1. crea / modifica los archivos del plan                         │
+  │ <span class="dim">   - handlers/items_delete.go                                   </span> │
+  │ <span class="dim">   - store/items.go            (DeleteItem + guard)             </span> │
+  │ <span class="dim">   - migrations/014_items.sql  (forward + rollback)             </span> │
+  │                                                                  │
+  │ 2. escribe tests en paralelo                                     │
+  │ <span class="dim">   - unit:        store/items_test.go                           </span> │
+  │ <span class="dim">   - integration: handlers/items_delete_test.go                 </span> │
+  │ <span class="dim">   - cubre los edge cases identificados en el diseño            </span> │
+  │                                                                  │
+  │ 3. corre los tests localmente entre cambios                      │
+  │ <span class="dim">   - feedback inmediato sin esperar al CI                       </span> │
+  │ <span class="dim">   - ajusta el codigo si rompe algo lateral                     </span> │
+  │                                                                  │
+  │ 4. agrega referencias a ADRs en el codigo si aplica              │
+  │ <span class="dim">   ej: // ADR: soft delete via active flag — see PR #91         </span> │
+  │                                                                  │
+  │ 5. yo reviso por encima lo que hizo:                             │
+  │    - los archivos correctos?                                     │
+  │    - los nombres tienen sentido?                                 │
+  │    - hay algo raro / inventado?                                  │
+  │                                                                  │
+  │ ¿algo fuera de lugar?                                            │
+  │ <span class="red">  SI → ajusto / le pido cambios → Claude itera                  </span> │
+  │ <span class="green">  NO → paso a FASE 4 (correccion y validacion)                  </span> │
+  │                                                                  │
+  │ <span class="green">→ codigo funcional sobre el branch, listo para commit           </span> │
+  └──────────────────────────────────────────────────────────────────┘
+
+  <span class="dim">La diferencia con "vibe coding": el plan ya existe (FASE 2),</span>
+  <span class="dim">los edge cases ya estan identificados, los tests saben que cubrir.</span>
+  <span class="dim">Claude no improvisa — ejecuta el plan + escribe tests en paralelo.</span>
+</pre>
+  </div>
+
+  <!-- FASE 4 - CORRECCION Y VALIDACION -->
+  <div class="section">
+    <div class="section-label">FASE 4  &mdash;  CORRECCION Y VALIDACION  &middot;  loop iterativo</div>
+<pre>
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ <span class="accent">/git-ship-review   (orquestador)                                </span> │
+  │                                                                  │
+  │ STEP 1  - git-commit                                             │
+  │   verifica branch (develop / main → ABORT)                       │
+  │   genera conventional commit:                                    │
+  │ <span class="green">    feat(items): add DELETE endpoint                            </span> │
+  │ <span class="yellow">    fix(parser): handle empty payload                           </span> │
+  │   stagea + commitea + pushea                                     │
+  │                                                                  │
+  │ STEP 2  - ci-test-report   (validacion automatica)               │
+  │   corre toda la suite de tests del proyecto:                     │
+  │ <span class="dim">    go test ./...  → unit + integration tests                   </span> │
+  │ <span class="dim">    parsea coverage por archivo                                 </span> │
+  │ <span class="dim">    detecta tests rotos / nuevos / sin cubrir                   </span> │
+  │   ¿pasaron los tests?                                            │
+  │ <span class="red">    NO → para acá, fixeas el codigo, vuelve al STEP 1           </span> │
+  │ <span class="green">    SI → genera tabla markdown con coverage                     </span> │
+  │                                                                  │
+  │ STEP 3  - git-pr-create                                          │
+  │   detecta base branch + sync con remote                          │
+  │   abre PR con Summary + tabla de Coverage + Test plan            │
+  │                                                                  │
+  │ STEP 4  - git-pr-review   (validacion semantica)                 │
+  │   analiza archivo por archivo + impacto cruzado:                 │
+  │ <span class="red">    ●  BLOCKER     no se puede mergear                          </span> │
+  │ <span class="yellow">    ▲  WARNING     revisar antes                                </span> │
+  │ <span class="green">    ○  SUGGESTION  mejora opcional                              </span> │
+  │                                                                  │
+  │ ¿hay BLOCKERs?                                                   │
+  │ <span class="red">  SI  → fixeas en local → vuelve al STEP 1 (loop)               </span> │
+  │ <span class="green">  NO  → PR listo para mergear a develop                         </span> │
+  └──────────────────────────────────────────────────────────────────┘
+
+  <span class="dim">Validacion en 2 capas:</span>
+  <span class="dim">  ─ ci-test-report  → tests verifican que el codigo funciona</span>
+  <span class="dim">  ─ git-pr-review   → analisis semantico verifica que esta bien hecho</span>
+  <span class="dim">El loop se repite hasta que las dos capas devuelven OK.</span>
+</pre>
+  </div>
+
+  <!-- FASE 3 -->
+  <div class="section">
+    <div class="section-label">FASE 5  &mdash;  RELEASE  &middot;  RC + validacion</div>
+<pre>
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ <span class="accent">/git-release-cut                                                </span> │
+  │                                                                  │
+  │ 1. crea rama release/v1.16.0 desde develop                       │
+  │                                                                  │
+  │ 2. genera Release Candidate                                      │
+  │ <span class="yellow">     git tag v1.16.0-rc1                                        </span> │
+  │ <span class="yellow">     go build → bin/v1.16.0-rc1/                                </span> │
+  │ <span class="yellow">     bin/current → rc1                                          </span> │
+  │                                                                  │
+  │ 3. validacion del RC                                             │
+  │      - smoke tests sobre el binario                              │
+  │      - pruebas manuales sobre endpoints criticos                 │
+  │      - verificacion de migraciones de DB                         │
+  │                                                                  │
+  │ ¿pruebas ok?                                                     │
+  │ <span class="red">  NO → fix en release branch → nuevo RC (rc2, rc3...)           </span> │
+  │ <span class="green">  SI → merge release → main                                     </span> │
+  │                                                                  │
+  │ 4. publicacion final                                             │
+  │ <span class="green">     git tag v1.16.0  (sin sufijo rc)                           </span> │
+  │ <span class="green">     go build → bin/v1.16.0/api/app                             </span> │
+  │ <span class="green">     bin/current → v1.16.0  (symlink atomico)                   </span> │
+  │                                                                  │
+  │ <span class="dim">El proceso de despliegue siempre apunta a bin/current.          </span> │
+  │ <span class="dim">Nunca se hardcodea la version en ningun lado.                   </span> │
+  └──────────────────────────────────────────────────────────────────┘
+</pre>
+  </div>
+
+  <!-- FASE 4 -->
+  <div class="section">
+    <div class="section-label">FASE 6  &mdash;  BACKPORT</div>
+<pre>
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ <span class="accent">/git-backport                                                   </span> │
+  │                                                                  │
+  │ main (v1.16.0 ya mergeado y tageado)                             │
+  │      │                                                           │
+  │      └── sync main → develop                                     │
+  │          delega a git-pr-create                                  │
+  │          → abre PR: backport v1.16.0 → develop                   │
+  │                                                                  │
+  │ <span class="green">→ develop queda sincronizado con main sin perder commits        </span> │
+  └──────────────────────────────────────────────────────────────────┘
+</pre>
+  </div>
+
+  <!-- FLUJO COMPLETO -->
+  <div class="section">
+    <div class="section-label">SYS&gt;  FLUJO COMPLETO</div>
+<pre class="flow">
+  tickets/backlog.md  ─ tarea PROJ-123
+       │
+       ▼  <span class="accent">/git-branch-new</span>
+  feature/PROJ-123
+       │
+       ▼  <span class="dim">diseño + ADRs (iteracion con Claude)</span>
+       │
+       ▼  <span class="dim">Claude implementa el plan + escribe tests</span>
+       │  <span class="dim">(yo reviso por encima)</span>
+       │
+       ▼  <span class="accent">/git-ship-review</span>  (correccion + validacion)
+  ┌─ commit ──► PR ──► review ─────────────────────┐
+  │                  ▲   <span class="red">BLOCKER ?  fix + repeat</span>   │
+  └────────────────────────────────────────────────┘
+       │  <span class="green">APPROVE</span>
+       ▼
+    develop  ◄── feature mergeada
+       │
+       ▼  <span class="accent">/git-release-cut</span>
+  release/v1.16.0
+       │  <span class="yellow">RC ──► validacion</span>
+       │  <span class="red">¿tests ok? NO ──► nuevo RC</span>
+       │  <span class="green">¿tests ok? SI ──► merge a main</span>
+       ▼
+    main  ──► tag v1.16.0  +  bin/current
+       │
+       ▼  <span class="accent">/git-backport</span>
+    develop  ◄── sincronizado
+</pre>
+  </div>
+
+  <div class="footer">
+    <span>built with Claude Code</span>
+    <span>END OF DISPATCH</span>
+  </div>
+
+</div>
+</body>
+</html>
