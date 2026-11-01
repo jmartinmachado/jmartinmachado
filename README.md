@@ -44,6 +44,10 @@ Go · SQL · REST / OpenAPI · Python · Docker · nginx · Linux self-hosted ·
 - [Flujo de trabajo y publicacion de binarios (es)](https://htmlpreview.github.io/?https://github.com/jmartinmachado/jmartinmachado/blob/main/ai-knowledge/git-workflow.es.html) — pipeline de 6 fases con 8 skills encadenados
 - [Workflow and binary publishing (en)](https://htmlpreview.github.io/?https://github.com/jmartinmachado/jmartinmachado/blob/main/ai-knowledge/git-workflow.en.html) — 6-phase pipeline with 8 chained skills
 
+## Skills
+
+- [splitwise](skills/splitwise/) — cargar gastos compartidos en Splitwise desde Claude Code en lenguaje natural: SKILL.md + CLI Python stdlib, con dry-run y confirmacion antes de cada escritura
+
 ```text
   SYS>   fin de transmision
 ```
